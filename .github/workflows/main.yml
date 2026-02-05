@@ -49,6 +49,7 @@ jobs:
       run: |
         git config --global user.name "zherunliu/language-stats"
         git config --global user.email "1437257281@qq.com"
+        git pull
         git add .
         # Force the build to succeed, even if no files were changed
         git commit -m 'Update generated files' || true
