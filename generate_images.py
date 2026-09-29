@@ -1,136 +1,117 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+"""Collect personal GitHub statistics and publish validated cards + JSON."""
 
+import argparse
 import asyncio
+import json
 import os
-import re
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from xml.etree import ElementTree
 
 import aiohttp
 
-from github_stats import Stats
+import render_cards
+from github_stats import GitHubAPIError, Stats
+from settings import Settings
+from snapshot import SCOPE, Snapshot
+
+ROOT = Path(__file__).resolve().parent
 
 
-################################################################################
-# Helper Functions
-################################################################################
-
-
-def generate_output_folder() -> None:
-    """
-    Create the output folder if it does not already exist
-    """
-    if not os.path.isdir("generated"):
-        os.mkdir("generated")
-
-
-################################################################################
-# Individual Image Generation Functions
-################################################################################
-
-
-async def generate_overview(s: Stats) -> None:
-    """
-    Generate an SVG badge with summary statistics
-    :param s: Represents user's GitHub statistics
-    """
-    with open("templates/overview.svg", "r") as f:
-        output = f.read()
-
-    output = re.sub("{{ name }}", await s.name, output)
-    output = re.sub("{{ stars }}", f"{await s.stargazers:,}", output)
-    output = re.sub("{{ forks }}", f"{await s.forks:,}", output)
-    output = re.sub("{{ contributions }}", f"{await s.total_contributions:,}", output)
-    changed = (await s.lines_changed)[0] + (await s.lines_changed)[1]
-    output = re.sub("{{ lines_changed }}", f"{changed:,}", output)
-    output = re.sub("{{ views }}", f"{await s.views:,}", output)
-    output = re.sub("{{ repos }}", f"{len(await s.repos):,}", output)
-
-    generate_output_folder()
-    with open("generated/overview.svg", "w") as f:
-        f.write(output)
-
-
-async def generate_languages(s: Stats) -> None:
-    """
-    Generate an SVG badge with summary languages used
-    :param s: Represents user's GitHub statistics
-    """
-    with open("templates/languages.svg", "r") as f:
-        output = f.read()
-
-    progress = ""
-    lang_list = ""
-    sorted_languages = sorted(
-        (await s.languages).items(), reverse=True, key=lambda t: t[1].get("size")
-    )
-    delay_between = 150
-    for i, (lang, data) in enumerate(sorted_languages):
-        color = data.get("color")
-        color = color if color is not None else "#000000"
-        progress += (
-            f'<span style="background-color: {color};'
-            f'width: {data.get("prop", 0):0.3f}%;" '
-            f'class="progress-item"></span>'
-        )
-        lang_list += f"""
-<li style="animation-delay: {i * delay_between}ms;">
-<svg xmlns="http://www.w3.org/2000/svg" class="octicon" style="fill:{color};"
-viewBox="0 0 16 16" version="1.1" width="16" height="16"><path
-fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8z"></path></svg>
-<span class="lang">{lang}</span>
-<span class="percent">{data.get("prop", 0):0.2f}%</span>
-</li>
-
-"""
-
-    output = re.sub(r"{{ progress }}", progress, output)
-    output = re.sub(r"{{ lang_list }}", lang_list, output)
-
-    generate_output_folder()
-    with open("generated/languages.svg", "w") as f:
-        f.write(output)
-
-
-################################################################################
-# Main Function
-################################################################################
-
-
-async def main() -> None:
-    """
-    Generate all badges
-    """
-    access_token = os.getenv("ACCESS_TOKEN")
-    if not access_token:
-        # access_token = os.getenv("GITHUB_TOKEN")
-        raise Exception("A personal access token is required to proceed!")
-    user = os.getenv("GITHUB_ACTOR")
-    if user is None:
-        raise RuntimeError("Environment variable GITHUB_ACTOR must be set.")
-    exclude_repos = os.getenv("EXCLUDED")
-    excluded_repos = (
-        {x.strip() for x in exclude_repos.split(",")} if exclude_repos else None
-    )
-    exclude_langs = os.getenv("EXCLUDED_LANGS")
-    excluded_langs = (
-        {x.strip() for x in exclude_langs.split(",")} if exclude_langs else None
-    )
-    # Convert a truthy value to a Boolean
-    raw_ignore_forked_repos = os.getenv("EXCLUDE_FORKED_REPOS")
-    ignore_forked_repos = (
-        not not raw_ignore_forked_repos
-        and raw_ignore_forked_repos.strip().lower() != "false"
-    )
+async def collect(settings: Settings) -> Snapshot:
+    token = os.getenv("ACCESS_TOKEN")
+    if not token:
+        raise ValueError("Set ACCESS_TOKEN before collecting GitHub statistics.")
     async with aiohttp.ClientSession() as session:
-        s = Stats(
-            user,
-            access_token,
+        stats = Stats(
+            settings.user,
+            token,
             session,
-            exclude_repos=excluded_repos,
-            exclude_langs=excluded_langs,
-            ignore_forked_repos=ignore_forked_repos,
+            exclude_repos=set(settings.exclude_repos),
+            exclude_langs=set(settings.exclude_languages),
         )
-        await asyncio.gather(generate_languages(s), generate_overview(s))
+        await stats.get_stats()
+        contributions, lines, views = await asyncio.gather(
+            stats.total_contributions,
+            stats.lines_changed
+            if settings.collect_lines_changed
+            else asyncio.sleep(0, result=None),
+            stats.views if settings.collect_views else asyncio.sleep(0, result=None),
+        )
+        data = {
+            "schema_version": 1,
+            "scope": SCOPE,
+            "user": settings.user,
+            "name": await stats.name,
+            "collected_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "repositories": len(await stats.repos),
+            "stars": await stats.stargazers,
+            "forks": await stats.forks,
+            "contributions": contributions,
+            "lines_changed": sum(lines) if lines is not None else None,
+            "views_14d": views,
+            "languages": [
+                {"name": name, "size": value["size"], "color": value["color"]}
+                for name, value in (await stats.languages).items()
+            ],
+        }
+    return Snapshot.from_dict(data)
+
+
+def publish(snapshot: Snapshot, output_dir: Path) -> None:
+    snapshot = Snapshot.from_dict(json.loads(snapshot.to_json()))
+    outputs = {
+        "overview.svg": render_cards.overview(snapshot),
+        "languages.svg": render_cards.languages(snapshot),
+        "stats.json": snapshot.to_json(),
+    }
+    # Complete rendering and validation before touching the published files.
+    for name in ("overview.svg", "languages.svg"):
+        ElementTree.fromstring(outputs[name])
+    output_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".stats-", dir=output_dir) as staging:
+        for filename, output in outputs.items():
+            Path(staging, filename).write_text(output, encoding="utf-8")
+        for filename in outputs:
+            os.replace(Path(staging, filename), output_dir / filename)
+
+
+async def main(
+    config_path: Path = ROOT / "stats.toml",
+    output_dir: Path = ROOT / "generated",
+    input_path: Path | None = None,
+) -> None:
+    snapshot = (
+        Snapshot.load(input_path)
+        if input_path is not None
+        else await collect(Settings.load(config_path))
+    )
+    publish(snapshot, output_dir)
+    print(
+        f"Published statistics for {snapshot.user} ({snapshot.repositories} owned repositories)."
+    )
+
+
+def cli() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=ROOT / "stats.toml")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "generated")
+    parser.add_argument(
+        "--from-json",
+        type=Path,
+        help="Render a saved snapshot without a token or network access.",
+    )
+    args = parser.parse_args()
+    try:
+        asyncio.run(main(args.config, args.output_dir, args.from_json))
+    except (GitHubAPIError, ValueError, OSError, ElementTree.ParseError) as error:
+        # OSError may mention a local path, never an API response body or token.
+        print(f"Statistics were not published: {error}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    cli()

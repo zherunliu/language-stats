@@ -1,0 +1,9 @@
+# Only ACCESS_TOKEN is required in the environment.
+[stats]
+user = "zherunliu"
+exclude_repos = []
+exclude_languages = []
+
+# Optional GitHub API metrics. Set false to omit their requests (shown as N/A).
+collect_lines_changed = true
+collect_views = true

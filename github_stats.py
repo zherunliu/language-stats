@@ -1,207 +1,178 @@
-#!/usr/bin/python3
+"""GitHub API collection for this personal statistics tool.
+
+Derived from jstrieb/github-stats (GPL-3.0); adapted for owned repositories.
+"""
 
 import asyncio
-import os
-from typing import Dict, List, Optional, Set, Tuple, Any, cast
+import json
+import re
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiohttp
-import requests
 
 
-###############################################################################
-# Main Classes
-###############################################################################
+class GitHubAPIError(RuntimeError):
+    """An API response cannot be used to publish trustworthy statistics."""
 
 
-class Queries(object):
-    """
-    Class with functions to query the GitHub GraphQL (v4) API and the REST (v3)
-    API. Also includes functions to dynamically generate GraphQL queries.
-    """
+def valid_count(value: object) -> bool:
+    return type(value) is int and value >= 0
+
+
+class Queries:
+    """GitHub GraphQL and REST requests with validation and bounded retries."""
 
     def __init__(
         self,
-        username: str,
         access_token: str,
         session: aiohttp.ClientSession,
         max_connections: int = 10,
     ):
-        self.username = username
         self.access_token = access_token
         self.session = session
         self.semaphore = asyncio.Semaphore(max_connections)
 
-    async def query(self, generated_query: str) -> Dict:
-        """
-        Make a request to the GraphQL API using the authentication token from
-        the environment
-        :param generated_query: string query to be sent to the API
-        :return: decoded GraphQL JSON output
-        """
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",
-        }
-        try:
-            async with self.semaphore:
-                r_async = await self.session.post(
-                    "https://api.github.com/graphql",
-                    headers=headers,
-                    json={"query": generated_query},
-                )
-            result = await r_async.json()
-            if result is not None:
-                return result
-        except:
-            print("aiohttp failed for GraphQL query")
-            # Fall back on non-async requests
-            async with self.semaphore:
-                r_requests = requests.post(
-                    "https://api.github.com/graphql",
-                    headers=headers,
-                    json={"query": generated_query},
-                )
-                result = r_requests.json()
-                if result is not None:
-                    return result
-        return dict()
-
-    async def query_rest(self, path: str, params: Optional[Dict] = None) -> Dict:
-        """
-        Make a request to the REST API
-        :param path: API path to query
-        :param params: Query parameters to be passed to the API
-        :return: deserialized REST JSON output
-        """
-
-        for _ in range(60):
-            headers = {
-                "Authorization": f"token {self.access_token}",
-            }
-            if params is None:
-                params = dict()
-            if path.startswith("/"):
-                path = path[1:]
+    async def _request(self, method: str, path: str, **kwargs) -> Tuple[int, Any]:
+        """Retry transient failures without logging tokens or private repo URLs."""
+        unavailable_ok = kwargs.pop("unavailable_ok", False)
+        for attempt in range(3):
             try:
                 async with self.semaphore:
-                    r_async = await self.session.get(
-                        f"https://api.github.com/{path}",
-                        headers=headers,
-                        params=tuple(params.items()),
-                    )
-                if r_async.status == 202:
-                    # print(f"{path} returned 202. Retrying...")
-                    print(f"A path returned 202. Retrying...")
-                    await asyncio.sleep(2)
-                    continue
+                    async with self.session.request(
+                        method,
+                        f"https://api.github.com/{path.lstrip('/')}",
+                        headers={
+                            "Authorization": f"Bearer {self.access_token}",
+                            "Accept": "application/vnd.github+json",
+                            "X-GitHub-Api-Version": "2026-03-10",
+                        },
+                        timeout=aiohttp.ClientTimeout(total=30),
+                        **kwargs,
+                    ) as response:
+                        if unavailable_ok and response.status == 403:
+                            try:
+                                body = await response.json()
+                            except (ValueError, aiohttp.ContentTypeError):
+                                raise GitHubAPIError(
+                                    "GitHub API returned invalid JSON."
+                                ) from None
+                            message = (
+                                body.get("message", "")
+                                if isinstance(body, dict)
+                                else ""
+                            )
+                            if (
+                                response.headers.get("x-ratelimit-remaining") == "0"
+                                or response.headers.get("retry-after")
+                                or "rate limit" in str(message).lower()
+                            ):
+                                raise GitHubAPIError(
+                                    "GitHub API rate limit exceeded; keeping previous images."
+                                )
+                            return response.status, None
+                        if unavailable_ok and response.status == 404:
+                            return response.status, None
+                        if response.status >= 500:
+                            if attempt == 2:
+                                raise GitHubAPIError(
+                                    f"GitHub API returned HTTP {response.status} after retries."
+                                )
+                        elif response.status not in (200, 202, 204):
+                            raise GitHubAPIError(
+                                f"GitHub API returned HTTP {response.status}; check token permissions and rate limits."
+                            )
+                        elif response.status in (202, 204):
+                            return response.status, None
+                        else:
+                            try:
+                                return response.status, await response.json()
+                            except (ValueError, aiohttp.ContentTypeError):
+                                raise GitHubAPIError(
+                                    "GitHub API returned invalid JSON."
+                                ) from None
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                if attempt == 2:
+                    raise GitHubAPIError(
+                        "GitHub API request failed after retries."
+                    ) from None
+            await asyncio.sleep(2**attempt)
+        raise GitHubAPIError("GitHub API request failed.")
 
-                result = await r_async.json()
-                if result is not None:
-                    return result
-            except:
-                print("aiohttp failed for rest query")
-                # Fall back on non-async requests
-                async with self.semaphore:
-                    r_requests = requests.get(
-                        f"https://api.github.com/{path}",
-                        headers=headers,
-                        params=tuple(params.items()),
-                    )
-                    if r_requests.status_code == 202:
-                        print(f"A path returned 202. Retrying...")
-                        await asyncio.sleep(2)
-                        continue
-                    elif r_requests.status_code == 200:
-                        return r_requests.json()
-        # print(f"There were too many 202s. Data for {path} will be incomplete.")
-        print("There were too many 202s. Data for this repository will be incomplete.")
-        return dict()
+    async def query(self, generated_query: str) -> Dict:
+        status, result = await self._request(
+            "POST", "graphql", json={"query": generated_query}
+        )
+        if status != 200 or not isinstance(result, dict):
+            raise GitHubAPIError("GraphQL returned an invalid response.")
+        if result.get("errors"):
+            # Raw messages can include private repository names. Log only known codes.
+            known_types = {
+                "FORBIDDEN",
+                "NOT_FOUND",
+                "RATE_LIMITED",
+                "INTERNAL",
+                "UNPROCESSABLE",
+            }
+            codes = sorted(
+                {
+                    error.get("type")
+                    for error in result["errors"]
+                    if isinstance(error, dict) and error.get("type") in known_types
+                }
+            )
+            detail = ", ".join(codes) or "unspecified"
+            raise GitHubAPIError(
+                f"GraphQL returned errors ({detail}); refusing partial statistics."
+            )
+        if not isinstance(result.get("data"), dict) or not isinstance(
+            result["data"].get("viewer"), dict
+        ):
+            raise GitHubAPIError("GraphQL response is missing viewer data.")
+        return result
+
+    async def query_rest(
+        self, path: str, params: Optional[Dict] = None, unavailable_ok: bool = False
+    ) -> Any:
+        for _ in range(60):
+            status, result = await self._request(
+                "GET", path, params=params or {}, unavailable_ok=unavailable_ok
+            )
+            if status == 202:
+                await asyncio.sleep(2)
+                continue
+            if status == 204:
+                return []
+            return result
+        raise GitHubAPIError(
+            "GitHub statistics remained pending; keeping previous images."
+        )
 
     @staticmethod
-    def repos_overview(
-        contrib_cursor: Optional[str] = None, owned_cursor: Optional[str] = None
-    ) -> str:
-        """
-        :return: GraphQL query with overview of user repositories
-        """
-        return f"""{{
-  viewer {{
-    login,
-    name,
-    repositories(
-        first: 100,
-        orderBy: {{
-            field: UPDATED_AT,
-            direction: DESC
-        }},
-        isFork: false,
-        after: {"null" if owned_cursor is None else '"'+ owned_cursor +'"'}
-    ) {{
-      pageInfo {{
-        hasNextPage
-        endCursor
-      }}
-      nodes {{
-        nameWithOwner
-        stargazers {{
-          totalCount
-        }}
-        forkCount
-        languages(first: 10, orderBy: {{field: SIZE, direction: DESC}}) {{
-          edges {{
-            size
-            node {{
-              name
-              color
-            }}
-          }}
-        }}
-      }}
-    }}
-    repositoriesContributedTo(
-        first: 100,
-        includeUserRepositories: false,
-        orderBy: {{
-            field: UPDATED_AT,
-            direction: DESC
-        }},
-        contributionTypes: [
-            COMMIT,
-            PULL_REQUEST,
-            REPOSITORY,
-            PULL_REQUEST_REVIEW
-        ]
-        after: {"null" if contrib_cursor is None else '"'+ contrib_cursor +'"'}
-    ) {{
-      pageInfo {{
-        hasNextPage
-        endCursor
-      }}
-      nodes {{
-        nameWithOwner
-        stargazers {{
-          totalCount
-        }}
-        forkCount
-        languages(first: 10, orderBy: {{field: SIZE, direction: DESC}}) {{
-          edges {{
-            size
-            node {{
-              name
-              color
-            }}
-          }}
-        }}
-      }}
-    }}
-  }}
-}}
-"""
+    def repos_overview(owned_cursor: Optional[str] = None) -> str:
+        after = json.dumps(owned_cursor)
+        return (
+            """{ viewer { login name
+          repositories(first: 100, affiliations: [OWNER], isFork: false,
+            orderBy: {field: UPDATED_AT, direction: DESC}, after: """
+            + after
+            + """) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              nameWithOwner
+              stargazers { totalCount }
+              forkCount
+              languages(first: 100, orderBy: {field: SIZE, direction: DESC}) {
+                totalCount
+                edges { size node { name color } }
+              }
+            }
+          }
+        } }"""
+        )
 
     @staticmethod
     def contrib_years() -> str:
-        """
-        :return: GraphQL query to get all years the user has been a contributor
-        """
+        """Query years represented in the user's GitHub contribution calendar."""
         return """
 query {
   viewer {
@@ -213,11 +184,8 @@ query {
 """
 
     @staticmethod
-    def contribs_by_year(year: str) -> str:
-        """
-        :param year: year to query for
-        :return: portion of a GraphQL query with desired info for a given year
-        """
+    def contribs_by_year(year: int) -> str:
+        """Query one calendar year of GitHub contributions."""
         return f"""
     year{year}: contributionsCollection(
         from: "{year}-01-01T00:00:00Z",
@@ -230,11 +198,8 @@ query {
 """
 
     @classmethod
-    def all_contribs(cls, years: List[str]) -> str:
-        """
-        :param years: list of years to get contributions for
-        :return: query to retrieve contribution information for all user years
-        """
+    def all_contribs(cls, years: List[int]) -> str:
+        """Combine yearly contribution calendar queries."""
         by_years = "\n".join(map(cls.contribs_by_year, years))
         return f"""
 query {{
@@ -245,10 +210,8 @@ query {{
 """
 
 
-class Stats(object):
-    """
-    Retrieve and store statistics about GitHub usage.
-    """
+class Stats:
+    """Validated statistics for one user and their owned, non-fork repositories."""
 
     def __init__(
         self,
@@ -257,14 +220,13 @@ class Stats(object):
         session: aiohttp.ClientSession,
         exclude_repos: Optional[Set] = None,
         exclude_langs: Optional[Set] = None,
-        ignore_forked_repos: bool = False,
     ):
         self.username = username
-        self._ignore_forked_repos = ignore_forked_repos
-        self._exclude_repos = set() if exclude_repos is None else exclude_repos
-        self._exclude_langs = set() if exclude_langs is None else exclude_langs
-        self.queries = Queries(username, access_token, session)
+        self._exclude_repos = {name.lower() for name in (exclude_repos or set())}
+        self._exclude_langs = {name.lower() for name in (exclude_langs or set())}
+        self.queries = Queries(access_token, session)
 
+        self._stats_lock = asyncio.Lock()
         self._name: Optional[str] = None
         self._stargazers: Optional[int] = None
         self._forks: Optional[int] = None
@@ -274,117 +236,132 @@ class Stats(object):
         self._lines_changed: Optional[Tuple[int, int]] = None
         self._views: Optional[int] = None
 
-    async def to_str(self) -> str:
-        """
-        :return: summary of all available statistics
-        """
-        languages = await self.languages_proportional
-        formatted_languages = "\n  - ".join(
-            [f"{k}: {v:0.4f}%" for k, v in languages.items()]
-        )
-        lines_changed = await self.lines_changed
-        return f"""Name: {await self.name}
-Stargazers: {await self.stargazers:,}
-Forks: {await self.forks:,}
-All-time contributions: {await self.total_contributions:,}
-Repositories with contributions: {len(await self.repos)}
-Lines of code added: {lines_changed[0]:,}
-Lines of code deleted: {lines_changed[1]:,}
-Lines of code changed: {lines_changed[0] + lines_changed[1]:,}
-Project page views: {await self.views:,}
-Languages:
-  - {formatted_languages}"""
-
     async def get_stats(self) -> None:
-        """
-        Get lots of summary statistics using one big query. Sets many attributes
-        """
-        self._stargazers = 0
-        self._forks = 0
-        self._languages = dict()
-        self._repos = set()
-
-        exclude_langs_lower = {x.lower() for x in self._exclude_langs}
-
-        next_owned = None
-        next_contrib = None
-        while True:
-            raw_results = await self.queries.query(
-                Queries.repos_overview(
-                    owned_cursor=next_owned, contrib_cursor=next_contrib
-                )
-            )
-            raw_results = raw_results if raw_results is not None else {}
-
-            self._name = raw_results.get("data", {}).get("viewer", {}).get("name", None)
-            if self._name is None:
-                self._name = (
-                    raw_results.get("data", {})
-                    .get("viewer", {})
-                    .get("login", "No Name")
-                )
-
-            contrib_repos = (
-                raw_results.get("data", {})
-                .get("viewer", {})
-                .get("repositoriesContributedTo", {})
-            )
-            owned_repos = (
-                raw_results.get("data", {}).get("viewer", {}).get("repositories", {})
-            )
-
-            repos = owned_repos.get("nodes", [])
-            if not self._ignore_forked_repos:
-                repos += contrib_repos.get("nodes", [])
-
-            for repo in repos:
-                if repo is None:
-                    continue
-                name = repo.get("nameWithOwner")
-                if name in self._repos or name in self._exclude_repos:
-                    continue
-                self._repos.add(name)
-                self._stargazers += repo.get("stargazers").get("totalCount", 0)
-                self._forks += repo.get("forkCount", 0)
-
-                for lang in repo.get("languages", {}).get("edges", []):
-                    name = lang.get("node", {}).get("name", "Other")
-                    languages = await self.languages
-                    if name.lower() in exclude_langs_lower:
+        """Cache one complete snapshot of owned, non-fork repositories."""
+        async with self._stats_lock:
+            if self._repos is not None:
+                return
+            stars, forks = 0, 0
+            languages: Dict[str, Any] = {}
+            repos: Set[str] = set()
+            display_name = self.username
+            cursor = None
+            seen_cursors = set()
+            while True:
+                viewer = (await self.queries.query(Queries.repos_overview(cursor)))[
+                    "data"
+                ]["viewer"]
+                login = viewer.get("login")
+                if not isinstance(login, str) or login.lower() != self.username.lower():
+                    raise GitHubAPIError(
+                        "ACCESS_TOKEN does not belong to the configured stats.user."
+                    )
+                name = viewer.get("name")
+                if name is not None and not isinstance(name, str):
+                    raise GitHubAPIError("GitHub display name is malformed.")
+                display_name = name or login
+                connection = viewer.get("repositories")
+                if not isinstance(connection, dict) or not isinstance(
+                    connection.get("nodes"), list
+                ):
+                    raise GitHubAPIError("Repository data is missing or incomplete.")
+                page_info = connection.get("pageInfo")
+                if (
+                    not isinstance(page_info, dict)
+                    or type(page_info.get("hasNextPage")) is not bool
+                ):
+                    raise GitHubAPIError("Repository pagination data is missing.")
+                for repo in connection["nodes"]:
+                    if not isinstance(repo, dict):
+                        raise GitHubAPIError(
+                            "Repository data contains an invalid entry."
+                        )
+                    repo_name = repo.get("nameWithOwner")
+                    if not isinstance(repo_name, str) or not re.fullmatch(
+                        r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo_name
+                    ):
+                        raise GitHubAPIError("Repository name is malformed.")
+                    if repo_name.split("/")[0].lower() != self.username.lower():
+                        raise GitHubAPIError(
+                            "Repository does not belong to the configured user."
+                        )
+                    if repo_name in repos or repo_name.lower() in self._exclude_repos:
                         continue
-                    if name in languages:
-                        languages[name]["size"] += lang.get("size", 0)
-                        languages[name]["occurrences"] += 1
-                    else:
-                        languages[name] = {
-                            "size": lang.get("size", 0),
-                            "occurrences": 1,
-                            "color": lang.get("node", {}).get("color"),
-                        }
-
-            if owned_repos.get("pageInfo", {}).get(
-                "hasNextPage", False
-            ) or contrib_repos.get("pageInfo", {}).get("hasNextPage", False):
-                next_owned = owned_repos.get("pageInfo", {}).get(
-                    "endCursor", next_owned
+                    stargazers = repo.get("stargazers")
+                    repo_stars = (
+                        stargazers.get("totalCount")
+                        if isinstance(stargazers, dict)
+                        else None
+                    )
+                    repo_forks = repo.get("forkCount")
+                    lang_data = repo.get("languages")
+                    if (
+                        not valid_count(repo_stars)
+                        or not valid_count(repo_forks)
+                        or not isinstance(lang_data, dict)
+                    ):
+                        raise GitHubAPIError("Repository statistics are incomplete.")
+                    edges = lang_data.get("edges")
+                    if (
+                        not isinstance(edges, list)
+                        or type(lang_data.get("totalCount")) is not int
+                        or lang_data["totalCount"] != len(edges)
+                    ):
+                        raise GitHubAPIError("Repository language data is incomplete.")
+                    repos.add(repo_name)
+                    stars += repo_stars
+                    forks += repo_forks
+                    seen_languages = set()
+                    for edge in edges:
+                        if not isinstance(edge, dict) or not isinstance(
+                            edge.get("node"), dict
+                        ):
+                            raise GitHubAPIError(
+                                "Language data contains an invalid entry."
+                            )
+                        lang = edge["node"].get("name")
+                        size = edge.get("size")
+                        if (
+                            not isinstance(lang, str)
+                            or not lang.strip()
+                            or not valid_count(size)
+                            or lang.lower() in seen_languages
+                        ):
+                            raise GitHubAPIError(
+                                "Language data contains an invalid entry."
+                            )
+                        seen_languages.add(lang.lower())
+                        if lang.lower() in self._exclude_langs:
+                            continue
+                        language = languages.setdefault(
+                            lang, {"size": 0, "color": edge["node"].get("color")}
+                        )
+                        language["size"] += size
+                if not page_info["hasNextPage"]:
+                    break
+                cursor = page_info.get("endCursor")
+                if not isinstance(cursor, str) or not cursor or cursor in seen_cursors:
+                    raise GitHubAPIError("Repository pagination did not advance.")
+                seen_cursors.add(cursor)
+            total = sum(lang["size"] for lang in languages.values())
+            if not repos or total <= 0:
+                raise GitHubAPIError(
+                    "No repositories or language bytes remain after filtering; keeping previous images."
                 )
-                next_contrib = contrib_repos.get("pageInfo", {}).get(
-                    "endCursor", next_contrib
-                )
-            else:
-                break
-
-        # TODO: Improve languages to scale by number of contributions to
-        #       specific filetypes
-        langs_total = sum([v.get("size", 0) for v in self._languages.values()])
-        for k, v in self._languages.items():
-            v["prop"] = 100 * (v.get("size", 0) / langs_total)
+            for language in languages.values():
+                language["prop"] = 100 * language["size"] / total
+            self._name = display_name
+            self._stargazers = stars
+            self._forks = forks
+            self._languages = languages
+            self._repos = repos
+            print(
+                f"Validated {len(repos)} owned repositories and {len(languages)} languages."
+            )
 
     @property
     async def name(self) -> str:
-        """
-        :return: GitHub user's name (e.g., Jacob Strieb)
-        """
+        """The authenticated user's display name."""
         if self._name is not None:
             return self._name
         await self.get_stats()
@@ -393,9 +370,7 @@ Languages:
 
     @property
     async def stargazers(self) -> int:
-        """
-        :return: total number of stargazers on user's repos
-        """
+        """Sum of stars on the selected owned repositories."""
         if self._stargazers is not None:
             return self._stargazers
         await self.get_stats()
@@ -404,9 +379,7 @@ Languages:
 
     @property
     async def forks(self) -> int:
-        """
-        :return: total number of forks on user's repos
-        """
+        """Sum of forks of the selected owned repositories."""
         if self._forks is not None:
             return self._forks
         await self.get_stats()
@@ -415,9 +388,7 @@ Languages:
 
     @property
     async def languages(self) -> Dict:
-        """
-        :return: summary of languages used by the user
-        """
+        """Language byte totals across the selected owned repositories."""
         if self._languages is not None:
             return self._languages
         await self.get_stats()
@@ -425,21 +396,8 @@ Languages:
         return self._languages
 
     @property
-    async def languages_proportional(self) -> Dict:
-        """
-        :return: summary of languages used by the user, with proportional usage
-        """
-        if self._languages is None:
-            await self.get_stats()
-            assert self._languages is not None
-
-        return {k: v.get("prop", 0) for (k, v) in self._languages.items()}
-
-    @property
     async def repos(self) -> Set[str]:
-        """
-        :return: list of names of user's repos
-        """
+        """Names of the selected owned repositories, retained only in memory."""
         if self._repos is not None:
             return self._repos
         await self.get_stats()
@@ -448,98 +406,119 @@ Languages:
 
     @property
     async def total_contributions(self) -> int:
-        """
-        :return: count of user's total contributions as defined by GitHub
-        """
+        """All-time GitHub calendar contributions, independent of repo filters."""
         if self._total_contributions is not None:
             return self._total_contributions
 
-        self._total_contributions = 0
-        years = (
-            (await self.queries.query(Queries.contrib_years()))
-            .get("data", {})
-            .get("viewer", {})
-            .get("contributionsCollection", {})
-            .get("contributionYears", [])
-        )
-        by_year = (
-            (await self.queries.query(Queries.all_contribs(years)))
-            .get("data", {})
-            .get("viewer", {})
-            .values()
-        )
-        for year in by_year:
-            self._total_contributions += year.get("contributionCalendar", {}).get(
-                "totalContributions", 0
-            )
-        return cast(int, self._total_contributions)
+        viewer = (await self.queries.query(Queries.contrib_years()))["data"]["viewer"]
+        collection = viewer.get("contributionsCollection")
+        if not isinstance(collection, dict) or not isinstance(
+            collection.get("contributionYears"), list
+        ):
+            raise GitHubAPIError("Contribution years are missing.")
+        years = collection["contributionYears"]
+        if not all(type(year) is int and 2008 <= year <= 9998 for year in years) or len(
+            set(years)
+        ) != len(years):
+            raise GitHubAPIError("Contribution years are malformed.")
+        total = 0
+        if years:
+            viewer = (await self.queries.query(Queries.all_contribs(years)))["data"][
+                "viewer"
+            ]
+            for year in years:
+                collection = viewer.get(f"year{year}")
+                calendar = (
+                    collection.get("contributionCalendar")
+                    if isinstance(collection, dict)
+                    else None
+                )
+                count = (
+                    calendar.get("totalContributions")
+                    if isinstance(calendar, dict)
+                    else None
+                )
+                if not valid_count(count):
+                    raise GitHubAPIError(
+                        "Yearly contribution statistics are incomplete."
+                    )
+                total += count
+        self._total_contributions = total
+        return total
 
     @property
-    async def lines_changed(self) -> Tuple[int, int]:
-        """
-        :return: count of total lines added, removed, or modified by the user
-        """
+    async def lines_changed(self) -> Optional[Tuple[int, int]]:
+        """The user's additions + deletions in selected owned repositories."""
         if self._lines_changed is not None:
             return self._lines_changed
-        additions = 0
-        deletions = 0
-        for repo in await self.repos:
-            r = await self.queries.query_rest(f"/repos/{repo}/stats/contributors")
-            for author_obj in r:
-                # Handle malformed response from the API by skipping this repo
-                if not isinstance(author_obj, dict) or not isinstance(
-                    author_obj.get("author", {}), dict
+        responses = await asyncio.gather(
+            *(
+                self.queries.query_rest(
+                    f"/repos/{repo}/stats/contributors", unavailable_ok=True
+                )
+                for repo in sorted(await self.repos)
+            )
+        )
+        if any(response is None for response in responses):
+            return None
+        additions, deletions = 0, 0
+        for response in responses:
+            if not isinstance(response, list):
+                raise GitHubAPIError("Contributor statistics are malformed.")
+            for item in response:
+                if not isinstance(item, dict):
+                    raise GitHubAPIError(
+                        "Contributor statistics contain an invalid entry."
+                    )
+                author = item.get("author")
+                # Anonymous contributors cannot be attributed to this account.
+                if author is None:
+                    continue
+                if not isinstance(author, dict) or not isinstance(
+                    author.get("login"), str
                 ):
+                    raise GitHubAPIError("Contributor identity is malformed.")
+                if author["login"].lower() != self.username.lower():
                     continue
-                author = author_obj.get("author", {}).get("login", "")
-                if author != self.username:
-                    continue
-
-                for week in author_obj.get("weeks", []):
-                    additions += week.get("a", 0)
-                    deletions += week.get("d", 0)
-
+                weeks = item.get("weeks")
+                if not isinstance(weeks, list):
+                    raise GitHubAPIError("Contributor weekly statistics are missing.")
+                for week in weeks:
+                    if (
+                        not isinstance(week, dict)
+                        or not valid_count(week.get("a"))
+                        or not valid_count(week.get("d"))
+                    ):
+                        raise GitHubAPIError("Contributor line counts are malformed.")
+                    additions += week["a"]
+                    deletions += week["d"]
         self._lines_changed = (additions, deletions)
         return self._lines_changed
 
     @property
-    async def views(self) -> int:
-        """
-        Note: only returns views for the last 14 days (as-per GitHub API)
-        :return: total number of page views the user's projects have received
-        """
+    async def views(self) -> Optional[int]:
+        """Views in the 14-day window provided by GitHub, not a monthly total."""
         if self._views is not None:
             return self._views
-
+        responses = await asyncio.gather(
+            *(
+                self.queries.query_rest(
+                    f"/repos/{repo}/traffic/views", unavailable_ok=True
+                )
+                for repo in sorted(await self.repos)
+            )
+        )
+        if any(response is None for response in responses):
+            return None
         total = 0
-        for repo in await self.repos:
-            r = await self.queries.query_rest(f"/repos/{repo}/traffic/views")
-            for view in r.get("views", []):
-                total += view.get("count", 0)
-
+        for response in responses:
+            if not isinstance(response, dict) or not isinstance(
+                response.get("views"), list
+            ):
+                raise GitHubAPIError("Traffic statistics are malformed.")
+            for view in response["views"]:
+                if not isinstance(view, dict) or not valid_count(view.get("count")):
+                    raise GitHubAPIError("Traffic counts are malformed.")
+                total += view["count"]
         self._views = total
         return total
-
-
-###############################################################################
-# Main Function
-###############################################################################
-
-
-async def main() -> None:
-    """
-    Used mostly for testing; this module is not usually run standalone
-    """
-    access_token = os.getenv("ACCESS_TOKEN")
-    user = os.getenv("GITHUB_ACTOR")
-    if access_token is None or user is None:
-        raise RuntimeError(
-            "ACCESS_TOKEN and GITHUB_ACTOR environment variables cannot be None!"
-        )
-    async with aiohttp.ClientSession() as session:
-        s = Stats(user, access_token, session)
-        print(await s.to_str())
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

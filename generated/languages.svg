@@ -1,149 +1,26 @@
-<svg id="gh-dark-mode-only" width="360" height="210" xmlns="http://www.w3.org/2000/svg">
+<svg id="gh-dark-mode-only" xmlns="http://www.w3.org/2000/svg"
+width="420" height="190" viewBox="0 0 420 190" role="img"
+aria-labelledby="title description">
+<title id="title">Languages in Owned Repositories</title>
+<desc id="description">Repository language statistics: N/A.</desc>
 <style>
-svg {
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif, Apple Color Emoji, Segoe UI Emoji;
-  font-size: 14px;
-  line-height: 21px;
-}
-
-#background {
-  width: calc(100% - 10px);
-  height: calc(100% - 10px);
-  fill: white;
-  stroke: rgb(225, 228, 232);
-  stroke-width: 1px;
-  rx: 6px;
-  ry: 6px;
-}
-
-#gh-dark-mode-only:target #background {
-  fill: #0d1117;
-  stroke-width: 0.5px;
-}
-
-foreignObject {
-  width: calc(100% - 10px - 32px);
-  height: calc(100% - 10px - 24px);
-}
-
-h2 {
-  margin-top: 0;
-  margin-bottom: 0.75em;
-  line-height: 24px;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgb(36, 41, 46);
-  fill: rgb(36, 41, 46);
-}
-
-#gh-dark-mode-only:target h2 {
-  color: #c9d1d9;
-  fill: #c9d1d9;
-}
-
-ul {
-  list-style: none;
-  padding-left: 0;
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-li {
-  display: inline-flex;
-  font-size: 12px;
-  margin-right: 2ch;
-  align-items: center;
-  flex-wrap: nowrap;
-  transform: translateX(-500%);
-  animation: slideIn 2s ease-in-out forwards;
-}
-
-@keyframes slideIn {
-  to {
-    transform: translateX(0);
-  }
-}
-
-div.ellipsis {
-  height: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.octicon {
-  fill: rgb(88, 96, 105);
-  margin-right: 0.5ch;
-  vertical-align: top;
-}
-
-#gh-dark-mode-only:target .octicon {
-  color: #8b949e;
-  fill: #8b949e;
-}
-
-.progress {
-  display: flex;
-  height: 8px;
-  overflow: hidden;
-  background-color: rgb(225, 228, 232);
-  border-radius: 6px;
-  outline: 1px solid transparent;
-  margin-bottom: 1em;
-}
-
-#gh-dark-mode-only:target .progress {
-  background-color: rgba(110, 118, 129, 0.4);
-}
-
-.progress-item {
-  outline: 2px solid rgb(225, 228, 232);
-  border-collapse: collapse;
-}
-
-#gh-dark-mode-only:target .progress-item {
-  outline: 2px solid #393f47;
-}
-
-.lang {
-  font-weight: 600;
-  margin-right: 4px;
-  color: rgb(36, 41, 46);
-}
-
-#gh-dark-mode-only:target .lang {
-  color: #c9d1d9;
-}
-
-.percent {
-  color: rgb(88, 96, 105)
-}
-
-#gh-dark-mode-only:target .percent {
-  color: #8b949e;
-}
+.background { fill: #fff; stroke: #d0d7de; }
+text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+.heading { fill: #0969da; font-size: 16px; font-weight: 600; }
+.label { fill: #57606a; font-size: 13px; }
+.value { fill: #24292f; font-size: 13px; font-weight: 600; }
+.note { fill: #57606a; font-size: 11px; }
+.track { fill: #eaeef2; }
+#gh-dark-mode-only:target .background { fill: #0d1117; stroke: #30363d; }
+#gh-dark-mode-only:target .heading { fill: #58a6ff; }
+#gh-dark-mode-only:target .label, #gh-dark-mode-only:target .note { fill: #8b949e; }
+#gh-dark-mode-only:target .value { fill: #c9d1d9; }
+#gh-dark-mode-only:target .track { fill: #21262d; }
 </style>
-<g>
-<rect x="5" y="5" id="background" />
-<g>
-<foreignObject x="21" y="17" width="318" height="176">
-<div xmlns="http://www.w3.org/1999/xhtml" class="ellipsis">
-
-<h2>Languages Used (By File Size)</h2>
-
-<div>
-<span class="progress">
-
-</span>
-</div>
-
-<ul>
-
-
-
-</ul>
-
-</div>
-</foreignObject>
-</g>
-</g>
+<rect class="background" x="0.5" y="0.5" width="419" height="189" rx="8"/>
+<text x="24" y="34" class="heading" text-anchor="start">Languages in Owned Repositories</text>
+<text x="24" y="56" class="note" text-anchor="start">By repository code bytes · non-fork</text>
+<rect class="track" x="24" y="72" width="372" height="8" rx="4"/>
+<text x="24" y="107" class="value" text-anchor="start">N/A</text>
+<text x="24" y="170" class="note" text-anchor="start">Updated N/A</text>
 </svg>

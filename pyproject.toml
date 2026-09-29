@@ -1,0 +1,9 @@
+[project]
+name = "personal-language-stats"
+version = "0.1.0"
+description = "Monthly personal GitHub statistics and SVG cards"
+requires-python = ">=3.12,<3.13"
+dependencies = ["aiohttp>=3.14.3,<4"]
+
+[tool.uv]
+package = false

@@ -1,56 +1,63 @@
-name: Generate Stats Images
+name: Update Personal Statistics
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
+    paths:
+      - '*.py'
+      - 'tests/**'
+      - 'stats.toml'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.python-version'
+      - '.github/workflows/main.yml'
   schedule:
-    - cron: "0 0 1 * *"
+    # Monthly, on the 1st at 08:23 China time (00:23 UTC).
+    - cron: '23 0 1 * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: personal-stats-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
-    # Check out repository under $GITHUB_WORKSPACE, so the job can access it
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    # Run using Python 3.8 for consistency and aiohttp
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.8'
-        architecture: 'x64'
-        cache: 'pip'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: '0.12.7'
+          enable-cache: true
 
-    # Install dependencies with `pip`
-    - name: Install requirements
-      run: |
-        python3 -m pip install --upgrade pip setuptools wheel
-        python3 -m pip install -r requirements.txt
+      - name: Install locked dependencies
+        run: uv sync --locked
 
-    # Generate all statistics images
-    - name: Generate images
-      run: |
-        python3 --version
-        python3 generate_images.py
-      env:
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        EXCLUDED: ${{ secrets.EXCLUDED }}
-        EXCLUDED_LANGS: ${{ secrets.EXCLUDED_LANGS }}
-        EXCLUDE_FORKED_REPOS: true
+      - name: Verify collection and publication
+        run: uv run --frozen python -m unittest discover -s tests -v
 
-    # Commit all changed files to the repository
-    - name: Commit to the repo
-      run: |
-        git config --global user.name "zherunliu/language-stats"
-        git config --global user.email "1437257281@qq.com"
-        git pull
-        git add .
-        # Force the build to succeed, even if no files were changed
-        git commit -m 'Update generated files' || true
-        git push
+      - name: Collect statistics and generate cards
+        run: uv run --frozen python generate_images.py
+        env:
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          EXCLUDED: ${{ secrets.EXCLUDED }}
+          EXCLUDED_LANGS: ${{ secrets.EXCLUDED_LANGS }}
+
+      - name: Publish validated statistics
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- generated/languages.svg generated/overview.svg generated/stats.json
+          if git diff --cached --quiet; then
+            echo 'Statistics are unchanged.'
+            exit 0
+          fi
+          git commit -m 'chore: update personal statistics'
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
