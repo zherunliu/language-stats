@@ -2,7 +2,7 @@ name: Update Personal Statistics
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - '*.py'
       - 'tests/**'

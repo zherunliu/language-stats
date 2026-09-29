@@ -65,7 +65,7 @@ uv run --frozen python generate_images.py --from-json generated/stats.json --out
 
 ## Monthly updates
 
-The [`Update Personal Statistics`](.github/workflows/main.yml) workflow runs on the first day of each month at 00:23 UTC (08:23 China time). It also supports manual runs from the Actions page. Changes to statistics code or configuration pushed to `master` trigger a run; output-only or README-only changes do not.
+The [`Update Personal Statistics`](.github/workflows/main.yml) workflow runs on the first day of each month at 00:23 UTC (08:23 China time). It also supports manual runs from the Actions page. Changes to statistics code or configuration pushed to `main` trigger a run; output-only or README-only changes do not.
 
 Configure `ACCESS_TOKEN` in the repository's Actions secrets. The workflow uses the default Actions credentials to publish generated files. The workflow installs locked dependencies with uv, runs regression tests, collects data, and commits only the three generated files. Workflow runs are serialized.
 
@@ -78,10 +78,10 @@ Supplementary metrics display `N/A` when inaccessible or denied (403/404), while
 Use these SVG URLs in the Profile README:
 
 ```md
-![GitHub statistics](https://raw.githubusercontent.com/zherunliu/language-stats/master/generated/overview.svg#gh-light-mode-only)
-![GitHub statistics](https://raw.githubusercontent.com/zherunliu/language-stats/master/generated/overview.svg#gh-dark-mode-only)
-![Repository languages](https://raw.githubusercontent.com/zherunliu/language-stats/master/generated/languages.svg#gh-light-mode-only)
-![Repository languages](https://raw.githubusercontent.com/zherunliu/language-stats/master/generated/languages.svg#gh-dark-mode-only)
+![GitHub statistics](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/overview.svg#gh-light-mode-only)
+![GitHub statistics](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/overview.svg#gh-dark-mode-only)
+![Repository languages](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/languages.svg#gh-light-mode-only)
+![Repository languages](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/languages.svg#gh-dark-mode-only)
 ```
 
 `render_cards.py` generates native SVG cards with light/dark theme support.
