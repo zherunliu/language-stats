@@ -69,6 +69,41 @@ class APIErrorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("FORBIDDEN", str(error.exception))
         self.assertNotIn("secret-org", str(error.exception))
 
+    async def test_graphql_error_identifies_fields_without_private_values(self):
+        payload = page([None])
+        payload["errors"] = [
+            {
+                "type": "FORBIDDEN",
+                "message": "secret-org/private-repo test-token",
+                "path": ["viewer", "repositories", "nodes", 42, "languages"],
+            },
+            {"type": "FORBIDDEN", "path": ["viewer", "secret-org/private-repo"]},
+        ]
+        self.session.request.return_value = response(payload=payload)[0]
+        with self.assertRaises(GitHubAPIError) as error:
+            await self.queries.query("query")
+        detail = str(error.exception)
+        self.assertIn("viewer.repositories.nodes.*.languages", detail)
+        self.assertIn("Check ACCESS_TOKEN", detail)
+        self.assertNotIn("secret-org", detail)
+        self.assertNotIn("test-token", detail)
+        self.assertNotIn("42", detail)
+
+    async def test_malformed_graphql_errors_remain_safe_failures(self):
+        for errors in (
+            {"message": "private data"},
+            ["private data", {"type": ["FORBIDDEN"], "path": ["viewer", {}]}],
+            [{"type": "private data", "path": ["viewer", True]}],
+        ):
+            with self.subTest(errors=errors):
+                self.session.request.return_value = response(
+                    payload={"errors": errors}
+                )[0]
+                with self.assertRaises(GitHubAPIError) as error:
+                    await self.queries.query("query")
+                self.assertNotIn("private data", str(error.exception))
+                self.assertNotIn("Fields:", str(error.exception))
+
     async def test_non_success_http_status_is_not_empty_data(self):
         for status in (401, 403, 404, 429):
             with self.subTest(status=status):

@@ -105,24 +105,54 @@ class Queries:
         if status != 200 or not isinstance(result, dict):
             raise GitHubAPIError("GraphQL returned an invalid response.")
         if result.get("errors"):
-            # Raw messages can include private repository names. Log only known codes.
+            # Raw messages and arbitrary path segments can reveal private data.
+            errors = result["errors"] if isinstance(result["errors"], list) else []
             known_types = {
                 "FORBIDDEN",
+                "INSUFFICIENT_SCOPES",
                 "NOT_FOUND",
                 "RATE_LIMITED",
                 "INTERNAL",
                 "UNPROCESSABLE",
             }
-            codes = sorted(
-                {
-                    error.get("type")
-                    for error in result["errors"]
-                    if isinstance(error, dict) and error.get("type") in known_types
-                }
+            known_fields = set(
+                "viewer login name repositories pageInfo hasNextPage endCursor "
+                "nodes nameWithOwner stargazers totalCount forkCount languages "
+                "edges size node color contributionsCollection contributionYears "
+                "contributionCalendar totalContributions".split()
             )
-            detail = ", ".join(codes) or "unspecified"
+            codes, paths = set(), set()
+            for error in errors:
+                if not isinstance(error, dict):
+                    continue
+                code = error.get("type")
+                if isinstance(code, str) and code in known_types:
+                    codes.add(code)
+                path = error.get("path")
+                if not isinstance(path, list) or not 0 < len(path) <= 16:
+                    continue
+                parts = []
+                for part in path:
+                    if isinstance(part, str) and part in known_fields:
+                        parts.append(part)
+                    elif isinstance(part, str) and re.fullmatch(r"year[0-9]{4}", part):
+                        parts.append("year*")
+                    elif type(part) is int and part >= 0:
+                        parts.append("*")
+                    else:
+                        break
+                else:
+                    paths.add(".".join(parts))
+            detail = ", ".join(sorted(codes)) or "unspecified"
+            fields = f" Fields: {', '.join(sorted(paths)[:5])}." if paths else ""
+            hint = (
+                " Check ACCESS_TOKEN resource owner, repository access and account permissions."
+                if codes & {"FORBIDDEN", "INSUFFICIENT_SCOPES"}
+                else ""
+            )
             raise GitHubAPIError(
                 f"GraphQL returned errors ({detail}); refusing partial statistics."
+                f"{fields}{hint}"
             )
         if not isinstance(result.get("data"), dict) or not isinstance(
             result["data"].get("viewer"), dict

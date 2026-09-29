@@ -40,6 +40,8 @@ Set a supplementary metric's flag to `false` to skip its API requests and displa
 
 Credentials are read only from the `ACCESS_TOKEN` environment variable. The token must belong to `stats.user`. A repository's default `GITHUB_TOKEN` cannot replace the personal token needed to read data across your repositories. A classic personal access token needs `read:user` and `repo` scopes to read private repositories.
 
+For a fine-grained token, select `zherunliu` (or the configured user) as the resource owner and include the repositories you intend to collect. Repository and account permissions both apply to GraphQL fields. The contributor statistics REST endpoint requires Metadata read access; views require Administration read access and display `N/A` when unavailable. See [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql) and [traffic permissions](https://docs.github.com/en/rest/metrics/traffic#get-page-views). The personal token is used for collection; publishing uses the workflow's default Actions credentials.
+
 With uv installed:
 
 ```sh
@@ -71,7 +73,7 @@ Configure `ACCESS_TOKEN` in the repository's Actions secrets. The workflow uses 
 
 HTTP/GraphQL errors, missing fields, invalid pagination, or empty repository/language results fail the run. Collection, rendering, and validation finish before output files are written; collection or rendering failures preserve previous results. Files are replaced individually, so an interrupted replacement is not a transaction across all files. Actions commits the outputs only after the entire generation step succeeds.
 
-Supplementary metrics display `N/A` when inaccessible or denied (403/404), while valid zero values display `0`. Rate limits, network failures, statistics that remain pending, and malformed responses fail the run. Logs do not print raw API error bodies or private repository URLs. Resolve the cause, such as token permissions, and rerun manually. Each card's timestamp makes older results identifiable.
+Supplementary metrics display `N/A` when inaccessible or denied (403/404), while valid zero values display `0`. Rate limits, network failures, statistics that remain pending, and malformed responses fail the run. GraphQL errors identify known query field paths with list indices masked, when GitHub supplies a path. Logs do not print raw API error bodies, arbitrary path segments, or private repository URLs. Resolve the cause, such as token permissions, and rerun manually. Each card's timestamp makes older results identifiable.
 
 ## Profile README images
 
