@@ -117,7 +117,8 @@ class Queries:
             }
             known_fields = set(
                 "viewer login name repositories pageInfo hasNextPage endCursor "
-                "nodes nameWithOwner stargazers totalCount forkCount languages "
+                "nodes nameWithOwner stargazers stargazerCount totalCount "
+                "forkCount languages "
                 "edges size node color contributionsCollection contributionYears "
                 "contributionCalendar totalContributions".split()
             )
@@ -189,7 +190,7 @@ class Queries:
             pageInfo { hasNextPage endCursor }
             nodes {
               nameWithOwner
-              stargazers { totalCount }
+              stargazerCount
               forkCount
               languages(first: 100, orderBy: {field: SIZE, direction: DESC}) {
                 totalCount
@@ -317,12 +318,7 @@ class Stats:
                         )
                     if repo_name in repos or repo_name.lower() in self._exclude_repos:
                         continue
-                    stargazers = repo.get("stargazers")
-                    repo_stars = (
-                        stargazers.get("totalCount")
-                        if isinstance(stargazers, dict)
-                        else None
-                    )
+                    repo_stars = repo.get("stargazerCount")
                     repo_forks = repo.get("forkCount")
                     lang_data = repo.get("languages")
                     if (

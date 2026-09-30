@@ -17,7 +17,7 @@ def repository(name="rico/project", languages=None):
     languages = [("Python", 60), ("TypeScript", 40)] if languages is None else languages
     return {
         "nameWithOwner": name,
-        "stargazers": {"totalCount": 2},
+        "stargazerCount": 2,
         "forkCount": 1,
         "languages": {
             "totalCount": len(languages),
@@ -193,6 +193,44 @@ class StatsTests(unittest.IsolatedAsyncioTestCase):
         query = self.stats.queries.query.call_args.args[0]
         self.assertNotIn("repositoriesContributedTo", query)
 
+    async def test_star_count_works_when_stargazer_list_is_forbidden(self):
+        session = MagicMock()
+
+        def github_response(method, url, **kwargs):
+            query = kwargs["json"]["query"]
+            if "stargazers" in query:
+                return response(
+                    payload={
+                        "errors": [
+                            {
+                                "type": "FORBIDDEN",
+                                "path": [
+                                    "viewer",
+                                    "repositories",
+                                    "nodes",
+                                    0,
+                                    "stargazers",
+                                ],
+                            }
+                        ]
+                    }
+                )[0]
+            return response(payload=page([item]))[0]
+
+        session.request.side_effect = github_response
+        with self.assertRaisesRegex(GitHubAPIError, "FORBIDDEN"):
+            await Queries("test-token", session).query(
+                "{ viewer { repositories(first: 1) { nodes { stargazers { totalCount } } } } }"
+            )
+        for expected_stars in (0, 2):
+            item = repository()
+            item["stargazerCount"] = expected_stars
+            stats = Stats("rico", "test-token", session)
+            self.assertEqual(await stats.stargazers, expected_stars)
+        query = session.request.call_args.kwargs["json"]["query"]
+        self.assertIn("stargazerCount", query)
+        self.assertNotIn("stargazers", query)
+
     async def test_failed_later_page_does_not_leave_partial_cached_stats(self):
         first = page([repository()], True, "next")
         self.stats.queries.query.side_effect = [
@@ -242,7 +280,7 @@ class StatsTests(unittest.IsolatedAsyncioTestCase):
     async def test_negative_or_boolean_core_counts_are_rejected(self):
         for value in (-1, True, "2"):
             item = repository()
-            item["stargazers"]["totalCount"] = value
+            item["stargazerCount"] = value
             self.stats.queries.query.return_value = page([item])
             with self.assertRaises(GitHubAPIError):
                 await self.stats.get_stats()
