@@ -155,6 +155,15 @@ class APIErrorTests(unittest.IsolatedAsyncioTestCase):
                 await self.queries.query_rest("repos/rico/project/stats/contributors")
         self.assertEqual(self.session.request.call_count, 60)
 
+    async def test_pending_optional_statistics_become_unavailable(self):
+        self.session.request.return_value = response(202)[0]
+        with patch("github_stats.asyncio.sleep", new_callable=AsyncMock):
+            result = await self.queries.query_rest(
+                "repos/rico/project/stats/contributors", unavailable_ok=True
+            )
+        self.assertIsNone(result)
+        self.assertEqual(self.session.request.call_count, 60)
+
     async def test_optional_permissions_and_real_empty_stats_are_distinct(self):
         for status in (403, 404):
             self.session.request.return_value = response(status)[0]

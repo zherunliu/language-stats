@@ -174,6 +174,8 @@ class Queries:
             if status == 204:
                 return []
             return result
+        if unavailable_ok:
+            return None
         raise GitHubAPIError(
             "GitHub statistics remained pending; keeping previous images."
         )
