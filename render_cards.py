@@ -8,6 +8,12 @@ from snapshot import Snapshot
 WIDTH = 420
 
 
+def card_height(snapshot: Snapshot) -> int:
+    """Keep both cards the same size while showing every language in two columns."""
+    rows = (len(snapshot.languages) + 1) // 2
+    return max(286, 136 + rows * 25)
+
+
 def text(x: int, y: int, value: str, css: str = "label", anchor: str = "start") -> str:
     return (
         f'<text x="{x}" y="{y}" class="{css}" text-anchor="{anchor}">'
@@ -51,6 +57,7 @@ def updated(snapshot: Snapshot) -> str:
 
 
 def overview(snapshot: Snapshot) -> str:
+    height = card_height(snapshot)
     heading = f"{snapshot.name}'s GitHub Statistics"
     rows = [
         ("Owned repositories (non-fork)", snapshot.repositories),
@@ -71,11 +78,11 @@ def overview(snapshot: Snapshot) -> str:
         [
             text(
                 24,
-                249,
+                height - 37,
                 "N/A: disabled or inaccessible; API metrics are estimates.",
                 "note",
             ),
-            text(24, 270, updated(snapshot), "note"),
+            text(24, height - 16, updated(snapshot), "note"),
         ]
     )
     return card(
@@ -85,13 +92,14 @@ def overview(snapshot: Snapshot) -> str:
             f"{label}: {value if value is not None else 'unavailable'}"
             for label, value in rows
         ),
-        286,
+        height,
         content,
     )
 
 
 def languages(snapshot: Snapshot) -> str:
-    height = 140 + len(snapshot.languages) * 25
+    height = card_height(snapshot)
+    rows = (len(snapshot.languages) + 1) // 2
     content = [
         text(24, 34, "Languages in Owned Repositories", "heading"),
         text(24, 56, "By repository code bytes · non-fork", "note"),
@@ -106,12 +114,14 @@ def languages(snapshot: Snapshot) -> str:
             f'<rect x="{offset:.4f}" y="72" width="{width:.4f}" height="8" fill="{lang.color}"/>'
         )
         offset += width
-        y = 107 + index * 25
+        column, row = divmod(index, rows)
+        x = 24 + column * 195
+        y = 107 + row * 25
         content.extend(
             [
-                f'<circle cx="29" cy="{y - 4}" r="4" fill="{lang.color}"/>',
-                text(42, y, short(lang.name, 40)),
-                text(396, y, f"{fraction:.2%}", "value", "end"),
+                f'<circle cx="{x + 5}" cy="{y - 4}" r="4" fill="{lang.color}"/>',
+                text(x + 18, y, short(lang.name, 16)),
+                text(x + 177, y, f"{fraction:.2%}", "value", "end"),
             ]
         )
     content.append(text(24, height - 20, updated(snapshot), "note"))

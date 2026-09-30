@@ -92,20 +92,28 @@ class SnapshotTests(unittest.TestCase):
         self.assertIn("C&lt;&amp;&gt;", render_cards.languages(snapshot))
         self.assertIn('fill="#8b949e"', render_cards.languages(snapshot))
 
-    def test_many_languages_are_all_visible_in_a_taller_card(self):
+    def test_cards_have_equal_dimensions_and_show_every_language(self):
         data = example()
-        data["languages"] = [
-            {"name": f"Language{i}", "size": 1, "color": "#123456"} for i in range(25)
-        ]
-        svg = render_cards.languages(Snapshot.from_dict(data))
-        root = ElementTree.fromstring(svg)
-        self.assertGreater(int(root.attrib["height"]), 700)
-        labels = [
-            element.text for element in root.iter("{http://www.w3.org/2000/svg}text")
-        ]
-        for i in range(25):
-            self.assertIn(f"Language{i}", labels)
-        self.assertIn("4.00%", labels)
+        for count in (2, 12, 25):
+            with self.subTest(count=count):
+                data["languages"] = [
+                    {"name": f"Language{i}", "size": 1, "color": "#123456"}
+                    for i in range(count)
+                ]
+                snapshot = Snapshot.from_dict(data)
+                overview = ElementTree.fromstring(render_cards.overview(snapshot))
+                languages = ElementTree.fromstring(render_cards.languages(snapshot))
+                for attribute in ("width", "height", "viewBox"):
+                    self.assertEqual(overview.attrib[attribute], languages.attrib[attribute])
+                if count == 25:
+                    self.assertGreater(int(languages.attrib["height"]), 450)
+                labels = [
+                    element.text
+                    for element in languages.iter("{http://www.w3.org/2000/svg}text")
+                ]
+                for i in range(count):
+                    self.assertIn(f"Language{i}", labels)
+                self.assertIn(f"{100 / count:.2f}%", labels)
 
     def test_percentages_use_current_bytes_instead_of_cached_proportions(self):
         data = copy.deepcopy(example())

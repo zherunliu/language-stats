@@ -2,10 +2,18 @@
 
 A personal GitHub statistics tool that collects data monthly and generates two SVG cards for a Profile README: an overview and a language breakdown. Built with Python and uv; no server deployment is required.
 
-<img alt="GitHub statistics" src="generated/overview.svg#gh-light-mode-only" />
-<img alt="GitHub statistics" src="generated/overview.svg#gh-dark-mode-only" />
-<img alt="Repository languages" src="generated/languages.svg#gh-light-mode-only" />
-<img alt="Repository languages" src="generated/languages.svg#gh-dark-mode-only" />
+<table>
+<tr>
+<td><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="generated/overview.svg#gh-dark-mode-only">
+  <img alt="GitHub statistics" src="generated/overview.svg#gh-light-mode-only" width="420">
+</picture></td>
+<td><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="generated/languages.svg#gh-dark-mode-only">
+  <img alt="Repository languages" src="generated/languages.svg#gh-light-mode-only" width="420">
+</picture></td>
+</tr>
+</table>
 
 Before the first successful collection, uncollected metrics display `N/A`. A successful run creates `generated/stats.json` and replaces the cards with validated results.
 
@@ -56,7 +64,7 @@ The Python version is selected by `.python-version`; dependencies are managed by
 Generated files:
 
 - `generated/overview.svg`: summary metrics with labels identifying their scope.
-- `generated/languages.svg`: all included languages, sorted by byte size; card height grows with the number of languages.
+- `generated/languages.svg`: all included languages, sorted by byte size. Both cards have the same dimensions; their height grows together when needed.
 - `generated/stats.json`: an aggregate snapshot from the same collection, recording the UTC timestamp, statistics scope, language byte counts, and availability of supplementary metrics.
 
 Use the saved JSON to inspect values or redraw cards without a token or network access. Offline rendering preserves the original collection timestamp:
@@ -77,13 +85,21 @@ Supplementary metrics display `N/A` when inaccessible or denied (403/404), while
 
 ## Profile README images
 
-Use these SVG URLs in the Profile README:
+Use this markup in the Profile README to show two equal-sized cards side by side. GitHub selects each card's light or dark colors from the visitor's theme:
 
-```md
-![GitHub statistics](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/overview.svg#gh-light-mode-only)
-![GitHub statistics](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/overview.svg#gh-dark-mode-only)
-![Repository languages](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/languages.svg#gh-light-mode-only)
-![Repository languages](https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/languages.svg#gh-dark-mode-only)
+```html
+<table>
+<tr>
+<td><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/overview.svg#gh-dark-mode-only">
+  <img alt="GitHub statistics" src="https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/overview.svg#gh-light-mode-only" width="420">
+</picture></td>
+<td><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/languages.svg#gh-dark-mode-only">
+  <img alt="Repository languages" src="https://raw.githubusercontent.com/zherunliu/language-stats/main/generated/languages.svg#gh-light-mode-only" width="420">
+</picture></td>
+</tr>
+</table>
 ```
 
 `render_cards.py` generates native SVG cards with light/dark theme support.
