@@ -2,7 +2,7 @@
 [stats]
 user = "zherunliu"
 exclude_repos = []
-exclude_languages = []
+exclude_languages = ["TeX", "BibTeX Style"]
 
 # Optional GitHub API metrics. Set false to omit their requests (shown as N/A).
 collect_lines_changed = true
