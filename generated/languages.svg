@@ -1,8 +1,8 @@
 <svg id="gh-dark-mode-only" xmlns="http://www.w3.org/2000/svg"
-width="420" height="190" viewBox="0 0 420 190" role="img"
+width="420" height="440" viewBox="0 0 420 440" role="img"
 aria-labelledby="title description">
-<title id="title">Languages in Owned Repositories</title>
-<desc id="description">Repository language statistics: N/A.</desc>
+<title id="title">Languages in owned repositories</title>
+<desc id="description">Repository code size, not personally authored code. TeX: 809886 bytes; CSS: 511089 bytes; TypeScript: 421739 bytes; Python: 372283 bytes; Vue: 212125 bytes; BibTeX Style: 210484 bytes; Swift: 88631 bytes; JavaScript: 73564 bytes; HTML: 56555 bytes; Makefile: 12058 bytes; Shell: 4865 bytes; SCSS: 2708 bytes</desc>
 <style>
 .background { fill: #fff; stroke: #d0d7de; }
 text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
@@ -17,10 +17,57 @@ text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-s
 #gh-dark-mode-only:target .value { fill: #c9d1d9; }
 #gh-dark-mode-only:target .track { fill: #21262d; }
 </style>
-<rect class="background" x="0.5" y="0.5" width="419" height="189" rx="8"/>
+<rect class="background" x="0.5" y="0.5" width="419" height="439" rx="8"/>
 <text x="24" y="34" class="heading" text-anchor="start">Languages in Owned Repositories</text>
 <text x="24" y="56" class="note" text-anchor="start">By repository code bytes · non-fork</text>
 <rect class="track" x="24" y="72" width="372" height="8" rx="4"/>
-<text x="24" y="107" class="value" text-anchor="start">N/A</text>
-<text x="24" y="170" class="note" text-anchor="start">Updated N/A</text>
+<rect x="24.0000" y="72" width="108.5299" height="8" fill="#3D6117"/>
+<circle cx="29" cy="103" r="4" fill="#3D6117"/>
+<text x="42" y="107" class="label" text-anchor="start">TeX</text>
+<text x="396" y="107" class="value" text-anchor="end">29.17%</text>
+<rect x="132.5299" y="72" width="68.4892" height="8" fill="#663399"/>
+<circle cx="29" cy="128" r="4" fill="#663399"/>
+<text x="42" y="132" class="label" text-anchor="start">CSS</text>
+<text x="396" y="132" class="value" text-anchor="end">18.41%</text>
+<rect x="201.0191" y="72" width="56.5157" height="8" fill="#3178c6"/>
+<circle cx="29" cy="153" r="4" fill="#3178c6"/>
+<text x="42" y="157" class="label" text-anchor="start">TypeScript</text>
+<text x="396" y="157" class="value" text-anchor="end">15.19%</text>
+<rect x="257.5348" y="72" width="49.8883" height="8" fill="#3572A5"/>
+<circle cx="29" cy="178" r="4" fill="#3572A5"/>
+<text x="42" y="182" class="label" text-anchor="start">Python</text>
+<text x="396" y="182" class="value" text-anchor="end">13.41%</text>
+<rect x="307.4231" y="72" width="28.4261" height="8" fill="#41b883"/>
+<circle cx="29" cy="203" r="4" fill="#41b883"/>
+<text x="42" y="207" class="label" text-anchor="start">Vue</text>
+<text x="396" y="207" class="value" text-anchor="end">7.64%</text>
+<rect x="335.8492" y="72" width="28.2062" height="8" fill="#8b949e"/>
+<circle cx="29" cy="228" r="4" fill="#8b949e"/>
+<text x="42" y="232" class="label" text-anchor="start">BibTeX Style</text>
+<text x="396" y="232" class="value" text-anchor="end">7.58%</text>
+<rect x="364.0554" y="72" width="11.8771" height="8" fill="#F05138"/>
+<circle cx="29" cy="253" r="4" fill="#F05138"/>
+<text x="42" y="257" class="label" text-anchor="start">Swift</text>
+<text x="396" y="257" class="value" text-anchor="end">3.19%</text>
+<rect x="375.9325" y="72" width="9.8580" height="8" fill="#f1e05a"/>
+<circle cx="29" cy="278" r="4" fill="#f1e05a"/>
+<text x="42" y="282" class="label" text-anchor="start">JavaScript</text>
+<text x="396" y="282" class="value" text-anchor="end">2.65%</text>
+<rect x="385.7906" y="72" width="7.5787" height="8" fill="#e34c26"/>
+<circle cx="29" cy="303" r="4" fill="#e34c26"/>
+<text x="42" y="307" class="label" text-anchor="start">HTML</text>
+<text x="396" y="307" class="value" text-anchor="end">2.04%</text>
+<rect x="393.3693" y="72" width="1.6158" height="8" fill="#427819"/>
+<circle cx="29" cy="328" r="4" fill="#427819"/>
+<text x="42" y="332" class="label" text-anchor="start">Makefile</text>
+<text x="396" y="332" class="value" text-anchor="end">0.43%</text>
+<rect x="394.9852" y="72" width="0.6519" height="8" fill="#89e051"/>
+<circle cx="29" cy="353" r="4" fill="#89e051"/>
+<text x="42" y="357" class="label" text-anchor="start">Shell</text>
+<text x="396" y="357" class="value" text-anchor="end">0.18%</text>
+<rect x="395.6371" y="72" width="0.3629" height="8" fill="#c6538c"/>
+<circle cx="29" cy="378" r="4" fill="#c6538c"/>
+<text x="42" y="382" class="label" text-anchor="start">SCSS</text>
+<text x="396" y="382" class="value" text-anchor="end">0.10%</text>
+<text x="24" y="420" class="note" text-anchor="start">Updated 2026-09-30 UTC</text>
 </svg>

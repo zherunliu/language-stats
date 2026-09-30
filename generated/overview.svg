@@ -1,8 +1,8 @@
 <svg id="gh-dark-mode-only" xmlns="http://www.w3.org/2000/svg"
 width="420" height="286" viewBox="0 0 420 286" role="img"
 aria-labelledby="title description">
-<title id="title">zherunliu&#x27;s GitHub Statistics</title>
-<desc id="description">Personal GitHub statistics. Owned repositories (non-fork): N/A; Stars on owned repositories: N/A; Forks of owned repositories: N/A; All-time GitHub contributions: N/A; Your lines changed in owned repos: N/A; Owned repo views (last 14 days): N/A</desc>
+<title id="title">rico&#x27;s GitHub Statistics</title>
+<desc id="description">Personal GitHub statistics. Owned repositories (non-fork): 21; Stars on owned repositories: 19; Forks of owned repositories: 0; All-time GitHub contributions: 664; Your lines changed in owned repos: 300678; Owned repo views (last 14 days): unavailable</desc>
 <style>
 .background { fill: #fff; stroke: #d0d7de; }
 text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
@@ -18,18 +18,19 @@ text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-s
 #gh-dark-mode-only:target .track { fill: #21262d; }
 </style>
 <rect class="background" x="0.5" y="0.5" width="419" height="285" rx="8"/>
-<text x="24" y="34" class="heading" text-anchor="start">zherunliu&#x27;s GitHub Statistics</text>
+<text x="24" y="34" class="heading" text-anchor="start">rico&#x27;s GitHub Statistics</text>
 <text x="24" y="67" class="label" text-anchor="start">Owned repositories (non-fork)</text>
-<text x="396" y="67" class="value" text-anchor="end">N/A</text>
+<text x="396" y="67" class="value" text-anchor="end">21</text>
 <text x="24" y="94" class="label" text-anchor="start">Stars on owned repositories</text>
-<text x="396" y="94" class="value" text-anchor="end">N/A</text>
+<text x="396" y="94" class="value" text-anchor="end">19</text>
 <text x="24" y="121" class="label" text-anchor="start">Forks of owned repositories</text>
-<text x="396" y="121" class="value" text-anchor="end">N/A</text>
+<text x="396" y="121" class="value" text-anchor="end">0</text>
 <text x="24" y="148" class="label" text-anchor="start">All-time GitHub contributions</text>
-<text x="396" y="148" class="value" text-anchor="end">N/A</text>
+<text x="396" y="148" class="value" text-anchor="end">664</text>
 <text x="24" y="175" class="label" text-anchor="start">Your lines changed in owned repos</text>
-<text x="396" y="175" class="value" text-anchor="end">N/A</text>
+<text x="396" y="175" class="value" text-anchor="end">300,678</text>
 <text x="24" y="202" class="label" text-anchor="start">Owned repo views (last 14 days)</text>
 <text x="396" y="202" class="value" text-anchor="end">N/A</text>
-<text x="24" y="270" class="note" text-anchor="start">Updated N/A</text>
+<text x="24" y="249" class="note" text-anchor="start">N/A: disabled or inaccessible; API metrics are estimates.</text>
+<text x="24" y="270" class="note" text-anchor="start">Updated 2026-09-30 UTC</text>
 </svg>
