@@ -64,7 +64,7 @@ The Python version is selected by `.python-version`; dependencies are managed by
 Generated files:
 
 - `generated/overview.svg`: summary metrics with labels identifying their scope.
-- `generated/languages.svg`: all included languages, sorted by byte size. Both cards have the same dimensions; their height grows together when needed.
+- `generated/languages.svg`: the six largest languages by repository code bytes, with percentages based on all included languages. The color bar still represents all included languages. Both cards stay at 420 × 286 pixels.
 - `generated/stats.json`: an aggregate snapshot from the same collection, recording the UTC timestamp, statistics scope, language byte counts, and availability of supplementary metrics.
 
 Use the saved JSON to inspect values or redraw cards without a token or network access. Offline rendering preserves the original collection timestamp:

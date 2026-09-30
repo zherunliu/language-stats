@@ -6,12 +6,8 @@ from html import escape
 from snapshot import Snapshot
 
 WIDTH = 420
-
-
-def card_height(snapshot: Snapshot) -> int:
-    """Keep both cards the same size while showing every language in two columns."""
-    rows = (len(snapshot.languages) + 1) // 2
-    return max(286, 136 + rows * 25)
+HEIGHT = 286
+LANGUAGE_LIMIT = 6
 
 
 def text(x: int, y: int, value: str, css: str = "label", anchor: str = "start") -> str:
@@ -57,7 +53,6 @@ def updated(snapshot: Snapshot) -> str:
 
 
 def overview(snapshot: Snapshot) -> str:
-    height = card_height(snapshot)
     heading = f"{snapshot.name}'s GitHub Statistics"
     rows = [
         ("Owned repositories (non-fork)", snapshot.repositories),
@@ -78,11 +73,11 @@ def overview(snapshot: Snapshot) -> str:
         [
             text(
                 24,
-                height - 37,
+                HEIGHT - 37,
                 "N/A: disabled or inaccessible; API metrics are estimates.",
                 "note",
             ),
-            text(24, height - 16, updated(snapshot), "note"),
+            text(24, HEIGHT - 16, updated(snapshot), "note"),
         ]
     )
     return card(
@@ -92,43 +87,43 @@ def overview(snapshot: Snapshot) -> str:
             f"{label}: {value if value is not None else 'unavailable'}"
             for label, value in rows
         ),
-        height,
+        HEIGHT,
         content,
     )
 
 
 def languages(snapshot: Snapshot) -> str:
-    height = card_height(snapshot)
-    rows = (len(snapshot.languages) + 1) // 2
     content = [
         text(24, 34, "Languages in Owned Repositories", "heading"),
-        text(24, 56, "By repository code bytes · non-fork", "note"),
+        text(24, 56, f"Top {LANGUAGE_LIMIT} shown · shares of all code bytes", "note"),
         '<rect class="track" x="24" y="72" width="372" height="8" rx="4"/>',
     ]
     total = sum(lang.size for lang in snapshot.languages)
     offset = 24.0
-    for index, lang in enumerate(snapshot.languages):
+    for lang in snapshot.languages:
         fraction = lang.size / total
         width = 372 * fraction
         content.append(
             f'<rect x="{offset:.4f}" y="72" width="{width:.4f}" height="8" fill="{lang.color}"/>'
         )
         offset += width
-        column, row = divmod(index, rows)
-        x = 24 + column * 195
-        y = 107 + row * 25
+    for index, lang in enumerate(snapshot.languages[:LANGUAGE_LIMIT]):
+        y = 107 + index * 25
         content.extend(
             [
-                f'<circle cx="{x + 5}" cy="{y - 4}" r="4" fill="{lang.color}"/>',
-                text(x + 18, y, short(lang.name, 16)),
-                text(x + 177, y, f"{fraction:.2%}", "value", "end"),
+                f'<circle cx="29" cy="{y - 4}" r="4" fill="{lang.color}"/>',
+                text(42, y, short(lang.name, 40)),
+                text(396, y, f"{lang.size / total:.2%}", "value", "end"),
             ]
         )
-    content.append(text(24, height - 20, updated(snapshot), "note"))
+    content.append(text(24, HEIGHT - 20, updated(snapshot), "note"))
     return card(
         "Languages in owned repositories",
-        "Repository code size, not personally authored code. "
-        + "; ".join(f"{lang.name}: {lang.size} bytes" for lang in snapshot.languages),
-        height,
+        f"Top {LANGUAGE_LIMIT} languages by repository code size, not personally authored code. "
+        + "; ".join(
+            f"{lang.name}: {lang.size / total:.2%}"
+            for lang in snapshot.languages[:LANGUAGE_LIMIT]
+        ),
+        HEIGHT,
         content,
     )

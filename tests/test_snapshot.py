@@ -92,12 +92,12 @@ class SnapshotTests(unittest.TestCase):
         self.assertIn("C&lt;&amp;&gt;", render_cards.languages(snapshot))
         self.assertIn('fill="#8b949e"', render_cards.languages(snapshot))
 
-    def test_cards_have_equal_dimensions_and_show_every_language(self):
+    def test_cards_stay_fixed_size_and_show_only_top_six_languages(self):
         data = example()
-        for count in (2, 12, 25):
+        for count in (2, 6, 12, 25):
             with self.subTest(count=count):
                 data["languages"] = [
-                    {"name": f"Language{i}", "size": 1, "color": "#123456"}
+                    {"name": f"Language{i}", "size": count - i, "color": "#123456"}
                     for i in range(count)
                 ]
                 snapshot = Snapshot.from_dict(data)
@@ -105,15 +105,18 @@ class SnapshotTests(unittest.TestCase):
                 languages = ElementTree.fromstring(render_cards.languages(snapshot))
                 for attribute in ("width", "height", "viewBox"):
                     self.assertEqual(overview.attrib[attribute], languages.attrib[attribute])
-                if count == 25:
-                    self.assertGreater(int(languages.attrib["height"]), 450)
+                self.assertEqual(languages.attrib["height"], "286")
                 labels = [
                     element.text
                     for element in languages.iter("{http://www.w3.org/2000/svg}text")
                 ]
                 for i in range(count):
-                    self.assertIn(f"Language{i}", labels)
-                self.assertIn(f"{100 / count:.2f}%", labels)
+                    if i < render_cards.LANGUAGE_LIMIT:
+                        self.assertIn(f"Language{i}", labels)
+                    else:
+                        self.assertNotIn(f"Language{i}", labels)
+                total = count * (count + 1) // 2
+                self.assertIn(f"{count / total:.2%}", labels)
 
     def test_percentages_use_current_bytes_instead_of_cached_proportions(self):
         data = copy.deepcopy(example())
