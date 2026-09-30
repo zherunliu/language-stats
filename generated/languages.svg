@@ -2,7 +2,7 @@
 width="420" height="286" viewBox="0 0 420 286" role="img"
 aria-labelledby="title description">
 <title id="title">Languages in owned repositories</title>
-<desc id="description">Top six languages by repository code size, not personally authored code. TeX: 29.17%; CSS: 18.41%; TypeScript: 15.19%; Python: 13.41%; Vue: 7.64%; BibTeX Style: 7.58%</desc>
+<desc id="description">Top 6 languages by repository code size, not personally authored code. CSS: 29.09%; TypeScript: 24.00%; Python: 21.27%; Vue: 12.07%; Swift: 5.04%; JavaScript: 4.19%</desc>
 <style>
 .background { fill: #fff; stroke: #d0d7de; }
 text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
@@ -21,35 +21,33 @@ text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-s
 <text x="24" y="34" class="heading" text-anchor="start">Languages in Owned Repositories</text>
 <text x="24" y="56" class="note" text-anchor="start">Top 6 shown · shares of all code bytes</text>
 <rect class="track" x="24" y="72" width="372" height="8" rx="4"/>
-<rect x="24.0000" y="72" width="108.5299" height="8" fill="#3D6117"/>
-<rect x="132.5299" y="72" width="68.4892" height="8" fill="#663399"/>
-<rect x="201.0191" y="72" width="56.5157" height="8" fill="#3178c6"/>
-<rect x="257.5348" y="72" width="49.8883" height="8" fill="#3572A5"/>
-<rect x="307.4231" y="72" width="28.4261" height="8" fill="#41b883"/>
-<rect x="335.8492" y="72" width="28.2062" height="8" fill="#8b949e"/>
-<rect x="364.0554" y="72" width="11.8771" height="8" fill="#F05138"/>
-<rect x="375.9325" y="72" width="9.8580" height="8" fill="#f1e05a"/>
-<rect x="385.7906" y="72" width="7.5787" height="8" fill="#e34c26"/>
-<rect x="393.3693" y="72" width="1.6158" height="8" fill="#427819"/>
-<rect x="394.9852" y="72" width="0.6519" height="8" fill="#89e051"/>
-<rect x="395.6371" y="72" width="0.3629" height="8" fill="#c6538c"/>
-<circle cx="29" cy="103" r="4" fill="#3D6117"/>
-<text x="42" y="107" class="label" text-anchor="start">TeX</text>
-<text x="396" y="107" class="value" text-anchor="end">29.17%</text>
-<circle cx="29" cy="128" r="4" fill="#663399"/>
-<text x="42" y="132" class="label" text-anchor="start">CSS</text>
-<text x="396" y="132" class="value" text-anchor="end">18.41%</text>
-<circle cx="29" cy="153" r="4" fill="#3178c6"/>
-<text x="42" y="157" class="label" text-anchor="start">TypeScript</text>
-<text x="396" y="157" class="value" text-anchor="end">15.19%</text>
-<circle cx="29" cy="178" r="4" fill="#3572A5"/>
-<text x="42" y="182" class="label" text-anchor="start">Python</text>
-<text x="396" y="182" class="value" text-anchor="end">13.41%</text>
-<circle cx="29" cy="203" r="4" fill="#41b883"/>
-<text x="42" y="207" class="label" text-anchor="start">Vue</text>
-<text x="396" y="207" class="value" text-anchor="end">7.64%</text>
-<circle cx="29" cy="228" r="4" fill="#8b949e"/>
-<text x="42" y="232" class="label" text-anchor="start">BibTeX Style</text>
-<text x="396" y="232" class="value" text-anchor="end">7.58%</text>
+<rect x="24.0000" y="72" width="108.2097" height="8" fill="#663399"/>
+<rect x="132.2097" y="72" width="89.2922" height="8" fill="#3178c6"/>
+<rect x="221.5019" y="72" width="79.1153" height="8" fill="#3572A5"/>
+<rect x="300.6172" y="72" width="44.9119" height="8" fill="#41b883"/>
+<rect x="345.5291" y="72" width="18.7653" height="8" fill="#F05138"/>
+<rect x="364.2944" y="72" width="15.5753" height="8" fill="#f1e05a"/>
+<rect x="379.8696" y="72" width="11.9740" height="8" fill="#e34c26"/>
+<rect x="391.8436" y="72" width="2.5530" height="8" fill="#427819"/>
+<rect x="394.3966" y="72" width="1.0300" height="8" fill="#89e051"/>
+<rect x="395.4267" y="72" width="0.5733" height="8" fill="#c6538c"/>
+<circle cx="29" cy="103" r="4" fill="#663399"/>
+<text x="42" y="107" class="label" text-anchor="start">CSS</text>
+<text x="396" y="107" class="value" text-anchor="end">29.09%</text>
+<circle cx="29" cy="128" r="4" fill="#3178c6"/>
+<text x="42" y="132" class="label" text-anchor="start">TypeScript</text>
+<text x="396" y="132" class="value" text-anchor="end">24.00%</text>
+<circle cx="29" cy="153" r="4" fill="#3572A5"/>
+<text x="42" y="157" class="label" text-anchor="start">Python</text>
+<text x="396" y="157" class="value" text-anchor="end">21.27%</text>
+<circle cx="29" cy="178" r="4" fill="#41b883"/>
+<text x="42" y="182" class="label" text-anchor="start">Vue</text>
+<text x="396" y="182" class="value" text-anchor="end">12.07%</text>
+<circle cx="29" cy="203" r="4" fill="#F05138"/>
+<text x="42" y="207" class="label" text-anchor="start">Swift</text>
+<text x="396" y="207" class="value" text-anchor="end">5.04%</text>
+<circle cx="29" cy="228" r="4" fill="#f1e05a"/>
+<text x="42" y="232" class="label" text-anchor="start">JavaScript</text>
+<text x="396" y="232" class="value" text-anchor="end">4.19%</text>
 <text x="24" y="266" class="note" text-anchor="start">Updated 2026-09-30 UTC</text>
 </svg>

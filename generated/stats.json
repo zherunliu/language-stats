@@ -7,19 +7,14 @@
   },
   "user": "zherunliu",
   "name": "rico",
-  "collected_at": "2026-09-30T01:17:58+00:00",
+  "collected_at": "2026-09-30T02:18:01+00:00",
   "repositories": 21,
   "stars": 19,
   "forks": 0,
-  "contributions": 664,
-  "lines_changed": 300678,
+  "contributions": 665,
+  "lines_changed": 300965,
   "views_14d": null,
   "languages": [
-    {
-      "name": "TeX",
-      "size": 809886,
-      "color": "#3D6117"
-    },
     {
       "name": "CSS",
       "size": 511089,
@@ -32,18 +27,13 @@
     },
     {
       "name": "Python",
-      "size": 372283,
+      "size": 373672,
       "color": "#3572A5"
     },
     {
       "name": "Vue",
       "size": 212125,
       "color": "#41b883"
-    },
-    {
-      "name": "BibTeX Style",
-      "size": 210484,
-      "color": "#8b949e"
     },
     {
       "name": "Swift",
